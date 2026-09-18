@@ -9,6 +9,7 @@ export default function VideoGallery() {
   const [searchQuery, setSearchQuery] = useState('');
   const [fullscreenVideo, setFullscreenVideo] = useState<Video | null>(null);
   const [isOsFullscreen, setIsOsFullscreen] = useState(false);
+  const [modalCopied, setModalCopied] = useState(false);
   const theaterRef = useRef<HTMLDivElement>(null);
 
   // ponytail: in-memory filtering is instant for 8 speeches; avoids search index libraries
@@ -108,6 +109,84 @@ export default function VideoGallery() {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [fullscreenVideo, handleNextVideo, handlePrevVideo]);
+
+  // ponytail: handle hash link on mount and URL changes so shared links jump directly to speech
+  useEffect(() => {
+    function scrollToTargetHash() {
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#video-')) {
+        const id = hash.replace('#video-', '');
+        const targetVideo = videos.find((v) => v.id === id);
+        if (targetVideo) {
+          setSelectedFilter('All');
+        }
+        setTimeout(() => {
+          const el = document.getElementById(hash.slice(1));
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('border-gold', 'shadow-lg');
+            setTimeout(() => {
+              el.classList.remove('border-gold', 'shadow-lg');
+            }, 2500);
+          }
+        }, 150);
+      }
+    }
+
+    scrollToTargetHash();
+    window.addEventListener('hashchange', scrollToTargetHash);
+    return () => window.removeEventListener('hashchange', scrollToTargetHash);
+  }, []);
+
+  async function shareCurrentFullscreenVideo() {
+    if (!fullscreenVideo) return;
+    const url = `${window.location.origin}${window.location.pathname.replace(/\/index\.html$/, '')}#video-${fullscreenVideo.id}`;
+
+    try {
+      window.history.replaceState(null, '', url);
+    } catch {}
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${fullscreenVideo.title} | Naveen Toastmasters Journey`,
+          text: `Watch "${fullscreenVideo.title}" (${fullscreenVideo.label}) by Naveen:`,
+          url,
+        });
+        setModalCopied(true);
+        setTimeout(() => setModalCopied(false), 2500);
+        return;
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+      }
+    }
+
+    let success = false;
+    if (typeof navigator !== 'undefined' && navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(url);
+        success = true;
+      } catch {}
+    }
+
+    if (!success) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch {}
+    }
+
+    setModalCopied(true);
+    setTimeout(() => setModalCopied(false), 2500);
+  }
 
   return (
     <section id="videos" className="px-6 py-20 max-w-4xl mx-auto">
@@ -350,6 +429,35 @@ export default function VideoGallery() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {/* Share speech */}
+              <button
+                type="button"
+                onClick={shareCurrentFullscreenVideo}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition-all cursor-pointer ${
+                  modalCopied
+                    ? 'bg-gold/20 border border-gold text-gold font-medium'
+                    : 'bg-surface hover:bg-surface-2 border border-border text-xs font-ui text-text-muted hover:text-cream'
+                }`}
+                title="Share or copy link to this speech"
+                aria-label="Share or copy link to this speech"
+              >
+                {modalCopied ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="tracking-wider uppercase text-[10px] text-gold font-medium">Link Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    <span className="hidden sm:inline tracking-wider uppercase text-[10px]">Share</span>
+                  </>
+                )}
+              </button>
+
               {/* Native OS fullscreen toggle */}
               <button
                 type="button"

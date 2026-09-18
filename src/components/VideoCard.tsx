@@ -19,13 +19,59 @@ export default function VideoCard({ video, index, onOpenFullscreen }: VideoCardP
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // ponytail: native clipboard API saves installing a copy/toast library
-  function copyShareLink() {
-    const url = `${window.location.origin}${window.location.pathname}#video-${video.id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+  // ponytail: Web Share API for mobile, clipboard API + execCommand fallback for cross-browser support
+  async function copyShareLink() {
+    const url = `${window.location.origin}${window.location.pathname.replace(/\/index\.html$/, '')}#video-${video.id}`;
+
+    try {
+      window.history.replaceState(null, '', url);
+    } catch {}
+
+    // 1. Try mobile Web Share API first
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${video.title} | Naveen Toastmasters Journey`,
+          text: `Watch "${video.title}" (${video.label}) by Naveen:`,
+          url,
+        });
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+        return;
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+      }
+    }
+
+    // 2. Clipboard API
+    let success = false;
+    if (typeof navigator !== 'undefined' && navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(url);
+        success = true;
+      } catch {}
+    }
+
+    // 3. Fallback textarea copy
+    if (!success) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch {}
+    }
+
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   }
 
   async function submitFeedback(e?: React.FormEvent) {
@@ -191,25 +237,49 @@ export default function VideoCard({ video, index, onOpenFullscreen }: VideoCardP
             <span className="tracking-wider uppercase font-medium text-[11px]">Watch Full Screen</span>
           </button>
 
-          {/* Copy link */}
+          {/* Share / Copy link */}
           <button
             type="button"
             onClick={copyShareLink}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface hover:bg-surface-2 border border-border text-text-muted hover:text-cream transition-colors cursor-pointer"
-            title="Copy link to this speech"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition-all cursor-pointer ${
+              copied
+                ? 'bg-gold/20 border border-gold text-gold font-medium shadow-xs'
+                : 'bg-surface hover:bg-surface-2 border border-border text-text-muted hover:text-cream'
+            }`}
+            title="Share or copy link to this speech"
+            aria-label="Share or copy link to this speech"
           >
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            <span className="text-[11px] uppercase tracking-wider">
-              {copied ? 'Link Copied!' : 'Share'}
-            </span>
+            {copied ? (
+              <>
+                <svg
+                  className="w-3.5 h-3.5 text-gold"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-[11px] uppercase tracking-wider text-gold font-medium">
+                  Link Copied!
+                </span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                <span className="text-[11px] uppercase tracking-wider">
+                  Share
+                </span>
+              </>
+            )}
           </button>
         </div>
 
