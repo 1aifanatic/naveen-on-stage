@@ -1,0 +1,16 @@
+name = "naveen-on-stage"
+compatibility_date = "2025-07-07"
+pages_build_output_dir = "dist"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "naveen-on-stage-db"
+database_id = "a09c19f4-afd9-40e9-966f-9fbb4d51f6fe"
+
+# Dev server
+[dev]
+port = 8788
+
+# Routes for Pages Functions
+# Functions are in /functions directory

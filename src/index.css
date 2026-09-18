@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* === Dark Yellow theme, Anthropic-inspired ===
+   - Background: very dark warm charcoal (almost black)
+   - Accent: warm gold (#F5C518 / #E8B90D)
+   - Type: serif body (Cormorant Garamond), sans-serif for UI/labels (Inter)
+   - Calm, generous whitespace, subtle hairline borders
+*/
+@theme {
+  --color-bg: #14110B;
+  --color-surface: #1C1810;
+  --color-surface-2: #251F14;
+  --color-border: #3A2F1B;
+  --color-border-soft: #2A2417;
+  --color-gold: #F5C518;
+  --color-gold-dim: #E8B90D;
+  --color-gold-soft: #D4A912;
+  --color-cream: #F2E8C9;
+  --color-text: #F2E8C9;
+  --color-text-muted: #9A8F75;
+  --color-text-dim: #6B6249;
+}
+
+body {
+  margin: 0;
+  font-family: 'Cormorant Garamond', 'Source Serif Pro', Georgia, serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "kern", "liga";
+  letter-spacing: 0.005em;
+}
+
+.font-serif  { font-family: 'Cormorant Garamond', 'Source Serif Pro', Georgia, serif; }
+.font-ui     { font-family: 'Inter', system-ui, -apple-system, sans-serif; letter-spacing: 0.01em; }
+.font-display { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; letter-spacing: -0.02em; }
+
+/* Hairline divider style */
+.rule {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-border), transparent);
+}
+
+/* Subtle entrance */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fade-up 0.6s ease-out forwards; }

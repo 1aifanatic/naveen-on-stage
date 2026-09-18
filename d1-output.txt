@@ -1,0 +1,95 @@
+
+ ⛅️ wrangler 4.108.0
+────────────────────
+Resource location: remote 
+
+🌀 Executing on remote database naveen-on-stage-db (a09c19f4-afd9-40e9-966f-9fbb4d51f6fe):
+🌀 To execute on your local development database, remove the --remote flag from your wrangler command.
+🚣 Executed 1 command in 0.35ms
+[
+  {
+    "results": [
+      {
+        "id": 1,
+        "video_id": "36NugPARf5c",
+        "name": "Viewer",
+        "rating": 4,
+        "message": "Loved the pause techniques!"
+      },
+      {
+        "id": 2,
+        "video_id": "36NugPARf5c",
+        "name": "Alice",
+        "rating": 5,
+        "message": "Loved this one!"
+      },
+      {
+        "id": 3,
+        "video_id": "NY46Y-F31UE",
+        "name": "Bob",
+        "rating": 4,
+        "message": "Great delivery"
+      },
+      {
+        "id": 4,
+        "video_id": "T-bAJUE1VvY",
+        "name": "Carol",
+        "rating": 5,
+        "message": "So inspiring"
+      },
+      {
+        "id": 5,
+        "video_id": "7st4MD5m3vE",
+        "name": "David",
+        "rating": 3,
+        "message": "Powerful story"
+      },
+      {
+        "id": 6,
+        "video_id": "aKxdg8INQ-w",
+        "name": "Eve",
+        "rating": 4,
+        "message": "Very engaging"
+      },
+      {
+        "id": 7,
+        "video_id": "pmU6-n0Z5jA",
+        "name": "Frank",
+        "rating": 5,
+        "message": "Helpful tips"
+      },
+      {
+        "id": 8,
+        "video_id": "US8WykcKTvQ",
+        "name": "Grace",
+        "rating": 4,
+        "message": "Loved the pacing"
+      },
+      {
+        "id": 9,
+        "video_id": "oPQ-VR7Wqwo",
+        "name": "Henry",
+        "rating": 5,
+        "message": "Best speech"
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "WNAM",
+      "served_by_colo": "DFW",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.3483
+      },
+      "duration": 0.3483,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 24576,
+      "rows_read": 9,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]
