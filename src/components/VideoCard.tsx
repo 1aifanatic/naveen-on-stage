@@ -4,404 +4,81 @@ import type { Video } from '../types';
 interface VideoCardProps {
   video: Video;
   index: number;
-  onOpenFullscreen: (video: Video) => void;
+  onOpen: (video: Video) => void;
 }
 
-export default function VideoCard({ video, index, onOpenFullscreen }: VideoCardProps) {
-  const [loaded, setLoaded] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [name, setName] = useState('');
-  const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
-  const [message, setMessage] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-
-  // ponytail: Web Share API for mobile, clipboard API + execCommand fallback for cross-browser support
-  async function copyShareLink() {
-    const url = `${window.location.origin}${window.location.pathname.replace(/\/index\.html$/, '')}#video-${video.id}`;
-
-    try {
-      window.history.replaceState(null, '', url);
-    } catch {}
-
-    // 1. Try mobile Web Share API first
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title: `${video.title} | Naveen Toastmasters Journey`,
-          text: `Watch "${video.title}" (${video.label}) by Naveen:`,
-          url,
-        });
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2500);
-        return;
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          return;
-        }
-      }
-    }
-
-    // 2. Clipboard API
-    let success = false;
-    if (typeof navigator !== 'undefined' && navigator.clipboard && window.isSecureContext) {
-      try {
-        await navigator.clipboard.writeText(url);
-        success = true;
-      } catch {}
-    }
-
-    // 3. Fallback textarea copy
-    if (!success) {
-      try {
-        const textarea = document.createElement('textarea');
-        textarea.value = url;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'fixed';
-        textarea.style.left = '-9999px';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        success = document.execCommand('copy');
-        document.body.removeChild(textarea);
-      } catch {}
-    }
-
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  }
-
-  async function submitFeedback(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    if (rating === 0) return setError('Please tap a heart to rate.');
-    setError('');
-    setSubmitting(true);
-    try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoId: video.id,
-          name: name.trim() || undefined,
-          rating,
-          message: message.trim(),
-        }),
-      });
-      if (!res.ok) throw new Error('Failed');
-      setSubmitted(true);
-      setName('');
-      setMessage('');
-    } catch {
-      setError('Could not send. Try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
+// The whole tile is one control: click anywhere to open the theatre player.
+// Duration is stated once, here, rather than repeated in a card header.
+export default function VideoCard({ video, index, onOpen }: VideoCardProps) {
+  const [thumbFailed, setThumbFailed] = useState(false);
 
   return (
-    <article
-      id={`video-${video.id}`}
-      className="scroll-mt-24 p-6 md:p-8 rounded-lg bg-surface/60 border border-border/80 hover:border-border transition-colors animate-fade-up"
-    >
-      {/* Header: Label, Number, Duration */}
-      <header className="mb-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-3">
-            <span className="font-ui text-xs tracking-[0.25em] text-text-dim">
-              №{String(index).padStart(2, '0')}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-ui font-medium tracking-wider uppercase bg-gold/10 text-gold border border-gold/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
-              {video.label}
-            </span>
+    <article className="group relative">
+      <button
+        type="button"
+        onClick={() => onOpen(video)}
+        className="block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
+        aria-label={`Play ${video.title} — ${video.label}, ${video.duration}`}
+      >
+        <div className="relative overflow-hidden rounded-card border border-border bg-surface-2 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-y-1 group-hover:border-gold/50 group-hover:shadow-xl group-hover:shadow-black/50">
+          <div className="aspect-video">
+            {thumbFailed ? (
+              // A 404 from the CDN should degrade to a branded plate, not a black hole.
+              <div className="grid h-full w-full place-items-center bg-gradient-to-br from-surface-2 to-bg">
+                <span className="font-serif text-3xl text-faint italic" aria-hidden="true">
+                  {String(index).padStart(2, '0')}
+                </span>
+              </div>
+            ) : (
+              <img
+                src={`https://img.youtube.com/vi/${video.id}/hqdefault.jpg`}
+                alt=""
+                onError={() => setThumbFailed(true)}
+                className="h-full w-full object-cover opacity-80 transition-opacity duration-300 group-hover:opacity-100"
+                style={{ objectPosition: '60% center' }}
+                loading="lazy"
+                width="480"
+                height="360"
+              />
+            )}
           </div>
 
-          <span className="font-ui text-xs tracking-wider text-text-muted flex items-center gap-1.5">
-            <svg
-              className="w-3.5 h-3.5 text-gold-soft"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="9" strokeWidth="2" />
-              <path strokeWidth="2" strokeLinecap="round" d="M12 7v5l3 2" />
-            </svg>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/70 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          />
+
+          {/* Always visible on touch, revealed on hover with a pointer. */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 grid place-items-center opacity-100 transition-opacity duration-300 sm:opacity-0 sm:group-hover:opacity-100"
+          >
+            <span className="grid h-14 w-14 place-items-center rounded-full border border-gold/60 bg-bg/75 text-gold backdrop-blur-sm transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 group-hover:border-gold group-hover:bg-gold group-hover:text-bg">
+              <svg className="ml-0.5 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5.5v13a1 1 0 001.53.85l10.2-6.5a1 1 0 000-1.7L9.53 4.65A1 1 0 008 5.5z" />
+              </svg>
+            </span>
+          </span>
+
+          <span className="absolute right-3 bottom-3 rounded bg-bg/85 px-2 py-1 font-ui text-2xs font-medium tracking-[0.08em] text-cream tabular-nums backdrop-blur-sm">
             {video.duration}
           </span>
         </div>
 
-        <h3 className="font-display text-2xl md:text-3xl text-text leading-snug">
-          {video.title}
-        </h3>
-
-        <p className="font-serif italic text-text-muted text-base md:text-lg leading-relaxed mt-2 mb-3">
-          {video.description}
-        </p>
-
-        {/* Tags */}
-        <div className="flex flex-wrap gap-1.5">
-          {video.tags.map((tag) => (
-            <span
-              key={tag}
-              className="font-ui text-[11px] text-text-dim px-2 py-0.5 rounded bg-surface-2/60 border border-border-soft"
-            >
-              #{tag}
+        {/* Meta above the title so every tile's label row lines up, and the
+            title — the one element allowed to wrap — is always last. */}
+        <div className="pt-4">
+          <p className="flex items-baseline gap-2 font-ui text-2xs tracking-[0.12em] text-dim uppercase">
+            <span className="text-faint tabular-nums">
+              {String(index).padStart(2, '0')}
             </span>
-          ))}
+            <span className="truncate">{video.label}</span>
+          </p>
+          <h3 className="mt-1.5 line-clamp-2 min-h-[3.1rem] font-serif text-lg leading-snug text-cream transition-colors duration-200 group-hover:text-gold">
+            {video.title}
+          </h3>
         </div>
-      </header>
-
-      {/* Player Section */}
-      <div className="relative aspect-video bg-surface-2 rounded-sm overflow-hidden border border-border mb-4">
-        {!loaded ? (
-          <div className="relative w-full h-full group">
-            <img
-              src={`https://img.youtube.com/vi/${video.id}/hqdefault.jpg`}
-              alt={video.title}
-              className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity"
-              loading="lazy"
-            />
-            {/* Dark gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-bg/90 via-transparent to-black/30" />
-
-            {/* Duration pill in bottom right */}
-            <span className="absolute bottom-3 right-3 font-ui text-[11px] font-medium tracking-wider px-2 py-0.5 rounded bg-bg/80 text-cream border border-border backdrop-blur-xs">
-              {video.duration}
-            </span>
-
-            {/* Big center play trigger */}
-            <button
-              type="button"
-              onClick={() => setLoaded(true)}
-              className="absolute inset-0 flex items-center justify-center cursor-pointer border-none bg-transparent group"
-              aria-label={`Play ${video.title} inline`}
-            >
-              <span className="relative z-10 w-16 h-16 rounded-full border border-gold/70 bg-bg/70 backdrop-blur-xs flex items-center justify-center text-gold text-xl group-hover:scale-110 group-hover:bg-gold group-hover:text-bg transition-all shadow-lg">
-                ▶
-              </span>
-            </button>
-
-            {/* Quick Full Screen banner at top right */}
-            <button
-              type="button"
-              onClick={() => onOpenFullscreen(video)}
-              className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded bg-bg/80 text-cream border border-border hover:border-gold hover:text-gold text-xs font-ui tracking-wider transition-colors cursor-pointer"
-              title="Watch full screen"
-            >
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-              </svg>
-              <span>Full Screen</span>
-            </button>
-          </div>
-        ) : (
-          <iframe
-            src={`https://www.youtube.com/embed/${video.id}?autoplay=1&rel=0`}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-            className="absolute inset-0 w-full h-full border-0"
-          />
-        )}
-      </div>
-
-      {/* Video Actions Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 py-3 px-2 border-b border-border-soft text-xs font-ui">
-        <div className="flex items-center gap-2">
-          {/* Watch Full Screen button */}
-          <button
-            type="button"
-            onClick={() => onOpenFullscreen(video)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface hover:bg-surface-2 border border-border hover:border-gold text-gold transition-colors cursor-pointer"
-            aria-label={`Watch ${video.title} in full screen theater`}
-          >
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-            <span className="tracking-wider uppercase font-medium text-[11px]">Watch Full Screen</span>
-          </button>
-
-          {/* Share / Copy link */}
-          <button
-            type="button"
-            onClick={copyShareLink}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition-all cursor-pointer ${
-              copied
-                ? 'bg-gold/20 border border-gold text-gold font-medium shadow-xs'
-                : 'bg-surface hover:bg-surface-2 border border-border text-text-muted hover:text-cream'
-            }`}
-            title="Share or copy link to this speech"
-            aria-label="Share or copy link to this speech"
-          >
-            {copied ? (
-              <>
-                <svg
-                  className="w-3.5 h-3.5 text-gold"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-[11px] uppercase tracking-wider text-gold font-medium">
-                  Link Copied!
-                </span>
-              </>
-            ) : (
-              <>
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-                <span className="text-[11px] uppercase tracking-wider">
-                  Share
-                </span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* YouTube external link */}
-        <a
-          href={`https://www.youtube.com/watch?v=${video.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-text-dim hover:text-gold tracking-wider uppercase text-[11px] no-underline transition-colors"
-        >
-          <span>Open on YouTube</span>
-          <svg
-            className="w-3 h-3"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-        </a>
-      </div>
-
-      {/* Direct, ultra-simple reaction row */}
-      <div className="pt-4 border-t border-border-soft">
-        {submitted ? (
-          <div className="flex items-center gap-2 py-1 text-gold font-serif italic text-base">
-            <span className="text-xl">♥</span>
-            <span>Thank you! Your reaction was received.</span>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              {/* Hearts + quick submit */}
-              <div className="flex items-center gap-3">
-                <span className="font-ui text-xs tracking-wider uppercase text-text-muted">
-                  Reaction:
-                </span>
-                <div
-                  className="flex items-center gap-1.5"
-                  onMouseLeave={() => setHover(0)}
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setRating(n)}
-                      onMouseEnter={() => setHover(n)}
-                      className="text-2xl leading-none cursor-pointer bg-transparent border-none p-0 transition-transform hover:scale-125"
-                      aria-label={`${n} heart${n > 1 ? 's' : ''}`}
-                    >
-                      <span className={(hover || rating) >= n ? 'text-gold' : 'text-border'}>
-                        ♥
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {rating > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => submitFeedback()}
-                    disabled={submitting}
-                    className="font-ui text-xs uppercase tracking-wider px-3 py-1 bg-gold text-bg font-semibold rounded hover:bg-gold-dim transition-colors cursor-pointer border-none shadow-xs"
-                  >
-                    {submitting ? 'Sending…' : 'Send ♥'}
-                  </button>
-                )}
-              </div>
-
-              {/* Optional note toggle */}
-              <button
-                type="button"
-                onClick={() => setOpen(!open)}
-                className="font-ui text-xs text-text-dim hover:text-gold tracking-wider uppercase bg-transparent border-none cursor-pointer transition-colors"
-              >
-                {open ? '− Close note' : '+ Add note (optional)'}
-              </button>
-            </div>
-
-            {/* Optional Note & Name Drawer */}
-            {open && (
-              <div className="pt-2 pb-1 space-y-3 max-w-md animate-fade-up">
-                <div>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name (optional)"
-                    maxLength={50}
-                    className="w-full bg-transparent border-0 border-b border-border py-1 font-serif text-base text-text placeholder:text-text-dim focus:outline-none focus:border-gold transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="What stayed with you? (optional note)"
-                    rows={2}
-                    maxLength={300}
-                    className="w-full bg-transparent border-0 border-b border-border py-1 font-serif text-base text-text placeholder:text-text-dim focus:outline-none focus:border-gold transition-colors resize-none"
-                  />
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => submitFeedback()}
-                    disabled={submitting || rating === 0}
-                    className="font-ui text-xs tracking-wider uppercase px-4 py-2 bg-gold text-bg font-medium rounded hover:bg-gold-dim disabled:opacity-40 transition-colors cursor-pointer border-none"
-                  >
-                    {submitting ? 'Sending…' : rating > 0 ? 'Send reaction & note' : 'Tap hearts above to rate'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {error && <p className="font-ui text-xs text-red-400/80">{error}</p>}
-          </div>
-        )}
-      </div>
+      </button>
     </article>
   );
 }
